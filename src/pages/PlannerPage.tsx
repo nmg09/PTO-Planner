@@ -4,45 +4,52 @@ import {
   endOfMonth,
   endOfWeek,
   format,
-  isSameDay,
   startOfMonth,
   startOfWeek,
   subMonths
 } from "date-fns";
 import { useMemo, useState } from "react";
-import { CalendarDays, CircleCheck, CircleDashed, CircleDot, CircleX } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Modal } from "../components/ui/Modal";
 import { formatDate } from "../lib/date";
-import { isWorkdayForDate } from "../lib/schedule";
+import { getScheduleForDate, isWorkdayForDate } from "../lib/schedule";
 import { useAppState } from "../state/AppContext";
-import type { LeaveBlock } from "../types/app";
 
-const WEEK_HEADERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const statusMeta: Record<LeaveBlock["status"], { label: string; className: string; icon: JSX.Element }> = {
-  planned: {
-    label: "Planned",
-    className: "bg-slate-800 text-white",
-    icon: <CircleDashed size={10} />
-  },
-  requested: {
-    label: "Requested",
-    className: "bg-amber-500 text-white",
-    icon: <CircleDot size={10} />
-  },
-  approved: {
-    label: "Approved",
-    className: "bg-emerald-600 text-white",
-    icon: <CircleCheck size={10} />
-  },
-  rejected: {
-    label: "Rejected",
-    className: "bg-rose-600 text-white",
-    icon: <CircleX size={10} />
+const getDominantWorkDays = (
+  monthDays: Date[],
+  scheduleRanges: ReturnType<typeof useAppState>["activePlan"]["settings"]["scheduleRanges"]
+): number[] => {
+  const patternCounts: Record<string, number> = {};
+
+  monthDays.forEach((day) => {
+    const schedule = getScheduleForDate(formatDate(day), scheduleRanges);
+    if (!schedule) {
+      return;
+    }
+    const normalized = [...new Set(schedule.workDays)].sort((a, b) => a - b);
+    const key = normalized.join(",");
+    patternCounts[key] = (patternCounts[key] ?? 0) + 1;
+  });
+
+  const dominantKey = Object.entries(patternCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!dominantKey) {
+    return [1, 2, 3, 4, 5];
   }
+
+  return dominantKey.split(",").map((value) => Number(value));
+};
+
+const chunkWeeks = (days: Date[]): Date[][] => {
+  const weeks: Date[][] = [];
+  for (let index = 0; index < days.length; index += 7) {
+    weeks.push(days.slice(index, index + 7));
+  }
+  return weeks;
 };
 
 export const PlannerPage = () => {
@@ -50,12 +57,6 @@ export const PlannerPage = () => {
   const [month, setMonth] = useState(new Date(activePlan.year, new Date().getMonth(), 1));
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [workdaysOnly, setWorkdaysOnly] = useState(false);
-
-  const calendarDays = useMemo(() => {
-    const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(month), { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
-  }, [month]);
 
   const monthDays = useMemo(
     () =>
@@ -65,6 +66,23 @@ export const PlannerPage = () => {
       }),
     [month]
   );
+
+  const dominantWorkDays = useMemo(
+    () => getDominantWorkDays(monthDays, activePlan.settings.scheduleRanges),
+    [activePlan.settings.scheduleRanges, monthDays]
+  );
+
+  const weekStartsOn = dominantWorkDays[0] === 0 ? 0 : 1;
+  const orderedWeekDays =
+    weekStartsOn === 0 ? [0, 1, 2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6, 0];
+
+  const calendarDays = useMemo(() => {
+    const start = startOfWeek(startOfMonth(month), { weekStartsOn });
+    const end = endOfWeek(endOfMonth(month), { weekStartsOn });
+    return eachDayOfInterval({ start, end });
+  }, [month, weekStartsOn]);
+
+  const weeks = useMemo(() => chunkWeeks(calendarDays), [calendarDays]);
 
   const dayItems = (date: Date) => {
     const iso = formatDate(date);
@@ -77,15 +95,55 @@ export const PlannerPage = () => {
     return { leaves, events };
   };
 
-  const visibleDays = useMemo(() => {
-    if (!workdaysOnly) {
-      return calendarDays;
-    }
+  const renderDayCell = (date: Date, compact = false) => {
+    const iso = formatDate(date);
+    const inMonth = date.getMonth() === month.getMonth();
+    const items = dayItems(date);
+    const isWorkday = isWorkdayForDate(iso, activePlan.settings.scheduleRanges);
+    const vacationCount = items.leaves.filter((leave) => leave.type === "vacation").length;
+    const sickCount = items.leaves.filter((leave) => leave.type === "sick").length;
+    const eventCount = items.events.length;
+    const hasItems = vacationCount + sickCount + eventCount > 0;
 
-    return monthDays.filter((date) =>
-      isWorkdayForDate(formatDate(date), activePlan.settings.scheduleRanges)
+    return (
+      <button
+        key={iso}
+        onClick={() => setSelectedDay(date)}
+        className={`rounded-xl border p-2 text-left transition ${
+          compact ? "min-h-24" : "min-h-20"
+        } ${inMonth ? "bg-white" : "bg-slate-50 text-slate-400"} ${
+          isWorkday ? "border-slate-200" : "border-amber-200 bg-amber-50"
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] font-medium text-slate-500">{format(date, "EEE")}</p>
+          <p className="text-sm font-semibold">{date.getDate()}</p>
+        </div>
+
+        <div className="mt-2 flex items-center gap-1">
+          {vacationCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-sky-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              {compact ? vacationCount : `Vacation ${vacationCount}`}
+            </span>
+          )}
+          {sickCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              {compact ? sickCount : `Sick ${sickCount}`}
+            </span>
+          )}
+          {eventCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-violet-600 px-2 py-0.5 text-[10px] font-semibold text-white">
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              {compact ? eventCount : `Event ${eventCount}`}
+            </span>
+          )}
+          {!hasItems && <span className="text-[11px] text-slate-400">No items</span>}
+        </div>
+      </button>
     );
-  }, [activePlan.settings.scheduleRanges, calendarDays, monthDays, workdaysOnly]);
+  };
 
   return (
     <div className="space-y-4">
@@ -103,7 +161,7 @@ export const PlannerPage = () => {
 
       <Card
         title={format(month, "MMMM yyyy")}
-        subtitle={workdaysOnly ? "Workdays only" : "Tap any day for details"}
+        subtitle={workdaysOnly ? "Workdays view" : "Month view"}
       >
         <div className="mb-3 flex items-center justify-between gap-2">
           <Button
@@ -112,98 +170,64 @@ export const PlannerPage = () => {
             onClick={() => setWorkdaysOnly((value) => !value)}
           >
             <CalendarDays size={14} />
-            {workdaysOnly ? "All days" : "Workdays only"}
+            {workdaysOnly ? "Show all days" : "Show workdays only"}
           </Button>
-          <p className="text-xs text-slate-500">Week starts on Monday</p>
+          <p className="text-xs text-slate-500">
+            Week starts on {weekStartsOn === 0 ? "Sunday" : "Monday"}
+          </p>
         </div>
 
         {!workdaysOnly && (
-          <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-500">
-            {WEEK_HEADERS.map((day) => (
-              <div key={day} className="py-1">
-                {day}
-              </div>
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-slate-500">
+              {orderedWeekDays.map((weekday) => (
+                <div key={weekday} className="py-1">
+                  {WEEKDAY_LABELS[weekday]}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-1 grid grid-cols-7 gap-1">
+              {calendarDays.map((date) => renderDayCell(date))}
+            </div>
+          </>
         )}
 
-        <div className={`mt-1 grid gap-1 ${workdaysOnly ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-7"}`}>
-          {visibleDays.map((date) => {
-            const iso = formatDate(date);
-            const inMonth = date.getMonth() === month.getMonth();
-            const items = dayItems(date);
-            const isWorkday = isWorkdayForDate(iso, activePlan.settings.scheduleRanges);
-            const vacationCount = items.leaves.filter((leave) => leave.type === "vacation").length;
-            const sickCount = items.leaves.filter((leave) => leave.type === "sick").length;
-            const eventCount = items.events.length;
-            const status = items.leaves[0]?.status;
-
-            return (
-              <button
-                key={iso}
-                onClick={() => setSelectedDay(date)}
-                className={`rounded-xl border p-2 text-left transition ${
-                  workdaysOnly ? "min-h-24" : "min-h-20"
-                } ${inMonth ? "bg-white" : "bg-slate-50 text-slate-400"} ${
-                  isWorkday ? "border-slate-200" : "border-amber-200 bg-amber-50"
-                }`}
+        {workdaysOnly && (
+          <div className="overflow-x-auto">
+            <div className="min-w-[360px]">
+              <div
+                className="grid gap-1 text-center text-xs text-slate-500"
+                style={{ gridTemplateColumns: `repeat(${dominantWorkDays.length}, minmax(0, 1fr))` }}
               >
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold">{date.getDate()}</p>
-                  {status && (
-                    <span
-                      className={`hidden items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium sm:inline-flex ${statusMeta[status].className}`}
-                    >
-                      {statusMeta[status].icon}
-                      {statusMeta[status].label}
-                    </span>
-                  )}
-                </div>
+                {dominantWorkDays.map((weekday) => (
+                  <div key={weekday} className="py-1">
+                    {WEEKDAY_LABELS[weekday]}
+                  </div>
+                ))}
+              </div>
 
-                <div className="mt-2 flex flex-wrap gap-1 sm:hidden">
-                  {vacationCount > 0 && (
-                    <span className="rounded bg-sky-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      V {vacationCount}
-                    </span>
-                  )}
-                  {sickCount > 0 && (
-                    <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      S {sickCount}
-                    </span>
-                  )}
-                  {eventCount > 0 && (
-                    <span className="rounded bg-violet-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      E {eventCount}
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-2 hidden space-y-1 sm:block">
-                  {items.leaves.slice(0, 2).map((leave) => (
-                    <span
-                      key={leave.id}
-                      className={`block truncate rounded px-1.5 py-1 text-[10px] font-semibold ${
-                        leave.type === "vacation"
-                          ? "bg-sky-600 text-white"
-                          : "bg-emerald-600 text-white"
-                      }`}
-                    >
-                      {leave.type === "vacation" ? "Vacation" : "Sick"} • {statusMeta[leave.status].label}
-                    </span>
-                  ))}
-                  {items.events.slice(0, 1).map((event) => (
-                    <span
-                      key={event.id}
-                      className="block truncate rounded bg-violet-600 px-1.5 py-1 text-[10px] font-semibold text-white"
-                    >
-                      Event • {event.title}
-                    </span>
-                  ))}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+              <div
+                className="mt-1 grid gap-1"
+                style={{ gridTemplateColumns: `repeat(${dominantWorkDays.length}, minmax(0, 1fr))` }}
+              >
+                {weeks.flatMap((week, weekIndex) =>
+                  dominantWorkDays.map((weekday) => {
+                    const date = week.find((value) => value.getDay() === weekday);
+                    if (!date) {
+                      return <div key={`empty-${weekIndex}-${weekday}`} />;
+                    }
+                    return (
+                      <div key={`work-${formatDate(date)}-${weekday}`}>
+                        {renderDayCell(date, true)}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </Card>
 
       <Modal
