@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { isAfter } from "date-fns";
 import { EVENT_CATEGORY_OPTIONS } from "../../lib/constants";
 import type { KeyEvent } from "../../types/app";
 import { Button } from "../ui/Button";
 import { Input, Select, Textarea } from "../ui/Inputs";
+import { parseDate } from "../../lib/date";
 
 type EventDraft = Omit<KeyEvent, "id">;
 
@@ -27,12 +29,18 @@ export const EventForm = ({ initial, onSave, onCancel }: EventFormProps) => {
           note: ""
         }
   );
+  const dateRangeError = isAfter(parseDate(form.startDate), parseDate(form.endDate))
+    ? "Start date must be on or before end date."
+    : null;
 
   return (
     <form
       className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault();
+        if (dateRangeError) {
+          return;
+        }
         onSave(form);
       }}
     >
@@ -66,6 +74,7 @@ export const EventForm = ({ initial, onSave, onCancel }: EventFormProps) => {
           Start date
           <Input
             type="date"
+            className={dateRangeError ? "border-rose-400 focus:border-rose-400" : ""}
             value={form.startDate}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, startDate: event.target.value }))
@@ -77,12 +86,15 @@ export const EventForm = ({ initial, onSave, onCancel }: EventFormProps) => {
           End date
           <Input
             type="date"
+            className={dateRangeError ? "border-rose-400 focus:border-rose-400" : ""}
             value={form.endDate}
             onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))}
             required
           />
         </label>
       </div>
+
+      {dateRangeError && <p className="text-sm text-rose-600">{dateRangeError}</p>}
 
       <label className="space-y-1 text-xs">
         Location
@@ -105,7 +117,9 @@ export const EventForm = ({ initial, onSave, onCancel }: EventFormProps) => {
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">Save event</Button>
+        <Button type="submit" disabled={Boolean(dateRangeError)}>
+          Save event
+        </Button>
       </div>
     </form>
   );

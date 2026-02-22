@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { isAfter } from "date-fns";
 import { Button } from "../ui/Button";
 import { Input, Select, Textarea } from "../ui/Inputs";
 import { LEAVE_STATUS_OPTIONS, LEAVE_TYPE_OPTIONS } from "../../lib/constants";
 import { calculateLeaveDayUnits } from "../../lib/leave";
 import type { KeyEvent, LeaveBlock, WorkScheduleRange } from "../../types/app";
+import { parseDate } from "../../lib/date";
 
 type LeaveDraft = Omit<LeaveBlock, "id">;
 
@@ -50,12 +52,18 @@ export const LeaveForm = ({
       ).toFixed(1),
     [form, scheduleRanges]
   );
+  const dateRangeError = isAfter(parseDate(form.startDate), parseDate(form.endDate))
+    ? "Start date must be on or before end date."
+    : null;
 
   return (
     <form
       className="space-y-3"
       onSubmit={(event) => {
         event.preventDefault();
+        if (dateRangeError) {
+          return;
+        }
         const safeStatus = form.type === "sick" ? "approved" : form.status;
         onSave({ ...form, status: safeStatus });
       }}
@@ -112,6 +120,7 @@ export const LeaveForm = ({
           Start date
           <Input
             type="date"
+            className={dateRangeError ? "border-rose-400 focus:border-rose-400" : ""}
             value={form.startDate}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, startDate: event.target.value }))
@@ -123,6 +132,7 @@ export const LeaveForm = ({
           End date
           <Input
             type="date"
+            className={dateRangeError ? "border-rose-400 focus:border-rose-400" : ""}
             value={form.endDate}
             onChange={(event) =>
               setForm((prev) => ({ ...prev, endDate: event.target.value }))
@@ -131,6 +141,8 @@ export const LeaveForm = ({
           />
         </label>
       </div>
+
+      {dateRangeError && <p className="text-sm text-rose-600">{dateRangeError}</p>}
 
       <div className="grid grid-cols-2 gap-2">
         <label className="space-y-1 text-xs">
@@ -217,7 +229,9 @@ export const LeaveForm = ({
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>
-        <Button type="submit">Save leave</Button>
+        <Button type="submit" disabled={Boolean(dateRangeError)}>
+          Save leave
+        </Button>
       </div>
     </form>
   );
