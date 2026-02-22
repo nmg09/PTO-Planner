@@ -3,16 +3,96 @@
 @tailwind utilities;
 
 :root {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  color: #0f172a;
-  background: radial-gradient(circle at top, #e0f2fe 0%, #f8fafc 45%, #e2e8f0 100%);
+  --background: 210 20% 98%;
+  --foreground: 215 25% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 215 25% 15%;
+  --primary: 199 89% 48%;
+  --primary-foreground: 0 0% 100%;
+  --muted: 210 16% 95%;
+  --muted-foreground: 215 14% 46%;
+  --accent: 199 80% 94%;
+  --accent-foreground: 199 70% 30%;
+  --destructive: 0 84% 60%;
+  --border: 214 20% 90%;
+  --radius: 0.75rem;
+  --vacation: 199 89% 48%;
+  --sick: 25 95% 53%;
+  --holiday: 350 80% 65%;
+  --approved: 142 72% 42%;
+  --pending: 38 92% 50%;
+  --rejected: 0 84% 60%;
+
+  color: hsl(var(--foreground));
+  background: linear-gradient(165deg, #eef7ff 0%, #f8fbff 46%, #eef2f9 100%);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Segoe UI", system-ui, sans-serif;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  color: hsl(var(--foreground));
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
   min-height: 100vh;
+}
+
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+}
+
+@layer utilities {
+  .bg-app {
+    background:
+      radial-gradient(1200px 600px at -10% -20%, rgba(14, 165, 233, 0.14), transparent 60%),
+      radial-gradient(900px 500px at 110% -10%, rgba(249, 115, 22, 0.1), transparent 55%),
+      radial-gradient(900px 400px at 50% 110%, rgba(99, 102, 241, 0.08), transparent 60%);
+  }
+
+  .nav-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+
+  .bg-holiday {
+    background-color: hsl(var(--holiday));
+  }
+
+  .text-holiday {
+    color: hsl(var(--holiday));
+  }
+
+  .border-holiday {
+    border-color: hsl(var(--holiday));
+  }
 }

@@ -8,6 +8,7 @@ import {
 } from "react";
 import type {
   AppState,
+  Holiday,
   KeyEvent,
   LeaveBlock,
   WorkScheduleRange,
@@ -15,7 +16,7 @@ import type {
   YearSettings
 } from "../types/app";
 import { makeInitialState, makeYearPlan } from "../lib/defaults";
-import { loadState, saveState } from "../lib/storage";
+import { loadState, saveState, getStorageKey } from "../lib/storage";
 
 export type AppContextValue = {
   state: AppState;
@@ -31,6 +32,9 @@ export type AppContextValue = {
   addEvent: (event: KeyEvent) => void;
   updateEvent: (event: KeyEvent) => void;
   removeEvent: (eventId: string) => void;
+  addHoliday: (holiday: Holiday) => void;
+  removeHoliday: (holidayId: string) => void;
+  addPublicHolidays: (holidays: Holiday[]) => void;
   replaceYearPlan: (yearPlan: YearPlan) => void;
   replaceState: (nextState: AppState) => void;
 };
@@ -59,12 +63,21 @@ const updateYearPlan = (
   };
 };
 
-export const AppStateProvider = ({ children }: { children: ReactNode }) => {
-  const [state, setState] = useState<AppState>(() => loadState() ?? makeInitialState());
+export const AppStateProvider = ({
+  children,
+  storageKey
+}: {
+  children: ReactNode;
+  storageKey?: string;
+}) => {
+  const resolvedStorageKey = storageKey ?? getStorageKey();
+  const [state, setState] = useState<AppState>(
+    () => loadState(resolvedStorageKey) ?? makeInitialState()
+  );
 
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    saveState(state, resolvedStorageKey);
+  }, [state, resolvedStorageKey]);
 
   const activePlan = useMemo(
     () => getYearPlan(state, state.activeYear),
@@ -190,6 +203,34 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
               : leave
           )
         }))
+      );
+    },
+    addHoliday: (holiday) => {
+      setState((prev) =>
+        updateYearPlan(prev, prev.activeYear, (plan) => ({
+          ...plan,
+          holidays: [holiday, ...plan.holidays]
+        }))
+      );
+    },
+    removeHoliday: (holidayId) => {
+      setState((prev) =>
+        updateYearPlan(prev, prev.activeYear, (plan) => ({
+          ...plan,
+          holidays: plan.holidays.filter((holiday) => holiday.id !== holidayId)
+        }))
+      );
+    },
+    addPublicHolidays: (holidays) => {
+      setState((prev) =>
+        updateYearPlan(prev, prev.activeYear, (plan) => {
+          const existingDates = new Set(plan.holidays.map((holiday) => holiday.date));
+          const unique = holidays.filter((holiday) => !existingDates.has(holiday.date));
+          return {
+            ...plan,
+            holidays: [...unique, ...plan.holidays]
+          };
+        })
       );
     },
     replaceYearPlan: (yearPlan) => {

@@ -3,9 +3,9 @@ import { appStateSchema, yearPlanSchema } from "./schema";
 
 const STORAGE_KEY = "pto-planner-app-state-v1";
 
-export const loadState = (): AppState | null => {
+export const loadState = (storageKey = STORAGE_KEY): AppState | null => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) {
       return null;
     }
@@ -22,8 +22,8 @@ export const loadState = (): AppState | null => {
   }
 };
 
-export const saveState = (state: AppState): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+export const saveState = (state: AppState, storageKey = STORAGE_KEY): void => {
+  localStorage.setItem(storageKey, JSON.stringify(state));
 };
 
 export const exportYearPlan = (yearPlan: unknown): string =>
@@ -38,4 +38,5 @@ export const importYearPlanFromJson = (json: string) =>
 export const importAppStateFromJson = (json: string) =>
   appStateSchema.parse(JSON.parse(json));
 
-export const getStorageKey = () => STORAGE_KEY;
+export const getStorageKey = (userId?: string) =>
+  userId ? `${STORAGE_KEY}-${userId}` : STORAGE_KEY;

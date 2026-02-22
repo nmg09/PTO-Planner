@@ -1,6 +1,7 @@
 export type LeaveType = "vacation" | "sick";
 export type LeaveStatus = "planned" | "requested" | "approved" | "rejected";
 export type EventCategory = "wedding" | "trip" | "family" | "work" | "other";
+export type HolidaySource = "public" | "custom";
 
 export type WorkScheduleRange = {
   id: string;
@@ -32,6 +33,14 @@ export type KeyEvent = {
   note?: string;
 };
 
+export type Holiday = {
+  id: string;
+  name: string;
+  date: string;
+  country?: string;
+  source: HolidaySource;
+};
+
 export type YearSettings = {
   vacationEntitlementDays: number;
   carryoverCapDays: number;
@@ -44,6 +53,7 @@ export type YearPlan = {
   settings: YearSettings;
   leaves: LeaveBlock[];
   events: KeyEvent[];
+  holidays: Holiday[];
 };
 
 export type AppState = {

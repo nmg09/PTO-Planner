@@ -39,7 +39,8 @@ const eventTitle = (event: KeyEvent): string => event.title;
 export const buildDashboardMetrics = (plan: YearPlan): DashboardMetrics => {
   const { approvedUsed, plannedUsed } = getVacationUsage(
     plan.leaves,
-    plan.settings.scheduleRanges
+    plan.settings.scheduleRanges,
+    plan.holidays
   );
 
   const remainingPlanned = plan.settings.vacationEntitlementDays - plannedUsed;
@@ -75,7 +76,7 @@ export const buildDashboardMetrics = (plan: YearPlan): DashboardMetrics => {
     (leave) => leave.type === "vacation" && leave.status === "requested"
   );
 
-  const sick = getSickTotals(plan.leaves, plan.settings.scheduleRanges);
+  const sick = getSickTotals(plan.leaves, plan.settings.scheduleRanges, plan.holidays);
 
   return {
     plannedUsed,

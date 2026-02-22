@@ -4,7 +4,7 @@ import { Button } from "../ui/Button";
 import { Input, Select, Textarea } from "../ui/Inputs";
 import { LEAVE_STATUS_OPTIONS, LEAVE_TYPE_OPTIONS } from "../../lib/constants";
 import { calculateLeaveDayUnits } from "../../lib/leave";
-import type { KeyEvent, LeaveBlock, WorkScheduleRange } from "../../types/app";
+import type { Holiday, KeyEvent, LeaveBlock, WorkScheduleRange } from "../../types/app";
 import { parseDate } from "../../lib/date";
 
 type LeaveDraft = Omit<LeaveBlock, "id">;
@@ -13,9 +13,11 @@ type LeaveFormProps = {
   initial?: LeaveBlock;
   defaultCountOnlyWorkdays: boolean;
   scheduleRanges: WorkScheduleRange[];
+  holidays: Holiday[];
   events: KeyEvent[];
   onSave: (leave: LeaveDraft) => void;
   onCancel: () => void;
+  onDelete?: () => void;
 };
 
 const today = new Date().toISOString().slice(0, 10);
@@ -24,9 +26,11 @@ export const LeaveForm = ({
   initial,
   defaultCountOnlyWorkdays,
   scheduleRanges,
+  holidays,
   events,
   onSave,
-  onCancel
+  onCancel,
+  onDelete
 }: LeaveFormProps) => {
   const [form, setForm] = useState<LeaveDraft>(
     initial
@@ -48,9 +52,10 @@ export const LeaveForm = ({
     () =>
       calculateLeaveDayUnits(
         { id: "preview", ...form },
-        scheduleRanges
+        scheduleRanges,
+        holidays
       ).toFixed(1),
-    [form, scheduleRanges]
+    [form, holidays, scheduleRanges]
   );
   const dateRangeError = isAfter(parseDate(form.startDate), parseDate(form.endDate))
     ? "Start date must be on or before end date."
@@ -226,6 +231,11 @@ export const LeaveForm = ({
       </p>
 
       <div className="flex justify-end gap-2">
+        {initial && onDelete && (
+          <Button type="button" variant="danger" onClick={onDelete}>
+            Delete
+          </Button>
+        )}
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>

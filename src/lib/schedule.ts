@@ -1,6 +1,6 @@
 import { eachDayOfInterval, getDay, isAfter, isBefore, isEqual } from "date-fns";
 import { formatDate, parseDate } from "./date";
-import type { WorkScheduleRange } from "../types/app";
+import type { Holiday, WorkScheduleRange } from "../types/app";
 
 export const dateInRange = (
   dateString: string,
@@ -28,8 +28,13 @@ export const getScheduleForDate = (
 
 export const isWorkdayForDate = (
   dateString: string,
-  ranges: WorkScheduleRange[]
+  ranges: WorkScheduleRange[],
+  holidays: Holiday[] = []
 ): boolean => {
+  if (holidays.some((holiday) => holiday.date === dateString)) {
+    return false;
+  }
+
   const schedule = getScheduleForDate(dateString, ranges);
   if (!schedule) {
     return false;

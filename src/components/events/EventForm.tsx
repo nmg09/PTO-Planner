@@ -12,11 +12,12 @@ type EventFormProps = {
   initial?: KeyEvent;
   onSave: (event: EventDraft) => void;
   onCancel: () => void;
+  onDelete?: () => void;
 };
 
 const today = new Date().toISOString().slice(0, 10);
 
-export const EventForm = ({ initial, onSave, onCancel }: EventFormProps) => {
+export const EventForm = ({ initial, onSave, onCancel, onDelete }: EventFormProps) => {
   const [form, setForm] = useState<EventDraft>(
     initial
       ? { ...initial }
@@ -114,6 +115,11 @@ export const EventForm = ({ initial, onSave, onCancel }: EventFormProps) => {
       </label>
 
       <div className="flex justify-end gap-2">
+        {initial && onDelete && (
+          <Button type="button" variant="danger" onClick={onDelete}>
+            Delete
+          </Button>
+        )}
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
         </Button>

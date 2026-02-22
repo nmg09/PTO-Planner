@@ -32,6 +32,19 @@ describe("schedule lookup", () => {
     expect(isWorkdayForDate("2026-03-07", ranges)).toBe(false);
     expect(isWorkdayForDate("2026-08-02", ranges)).toBe(true);
   });
+
+  it("treats configured holidays as non-workdays", () => {
+    expect(
+      isWorkdayForDate("2026-08-03", ranges, [
+        {
+          id: "h1",
+          name: "Test Holiday",
+          date: "2026-08-03",
+          source: "custom"
+        }
+      ])
+    ).toBe(false);
+  });
 });
 
 describe("schedule range helpers", () => {
