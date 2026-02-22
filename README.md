@@ -58,6 +58,10 @@ npm run build
 4. Set Railway environment variables from `.env.example`.
 5. Open the generated Railway domain. HTTPS is enabled automatically by Railway.
 
+Recommended Railway build/runtime variable:
+
+- `NIXPACKS_NODE_VERSION=24`
+
 ### Step 1 (Mandatory): Server Auth Gate
 
 This repo now enforces server-side Basic Auth by default in production.
