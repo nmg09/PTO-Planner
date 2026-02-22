@@ -15,7 +15,6 @@ concurrency:
 jobs:
   migrate:
     runs-on: ubuntu-latest
-    environment: production
     permissions:
       contents: read
     steps:
@@ -28,19 +27,12 @@ jobs:
 
       - name: Validate required secrets
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          test -n "$SUPABASE_ACCESS_TOKEN" || (echo "Missing secret: SUPABASE_ACCESS_TOKEN" && exit 1)
-          test -n "$SUPABASE_PROJECT_REF" || (echo "Missing secret: SUPABASE_PROJECT_REF" && exit 1)
-          test -n "$SUPABASE_DB_PASSWORD" || (echo "Missing secret: SUPABASE_DB_PASSWORD" && exit 1)
+          test -n "$SUPABASE_DB_URL" || (echo "Missing secret: SUPABASE_DB_URL" && exit 1)
 
       - name: Push migrations
         env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          supabase link --project-ref "$SUPABASE_PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
-          supabase db push --linked --password "$SUPABASE_DB_PASSWORD"
+          supabase db push --db-url "$SUPABASE_DB_URL"
