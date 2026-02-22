@@ -9,7 +9,8 @@ Mobile-friendly PTO planning app built with React + TypeScript + Vite.
 - date-fns
 - zod
 - Supabase Auth (email/password)
-- localStorage persistence (scoped per signed-in user)
+- Supabase table persistence for cross-device sync
+- localStorage fallback/cache (scoped per signed-in user)
 
 ## Features
 
@@ -53,8 +54,9 @@ npm run build
 1. Push this repo to GitHub.
 2. In Railway, create a new project from that GitHub repo.
 3. Railway will use `railway.json`:
-   - Build: `npm ci && npm run build`
+   - Build: `npm install && npm run build`
    - Start: `npm run start`
+   - Healthcheck: `/healthz`
 4. Set Railway environment variables from `.env.example`.
 5. Open the generated Railway domain. HTTPS is enabled automatically by Railway.
 
@@ -86,21 +88,22 @@ Supabase dashboard setup:
 3. Add your Railway URL to:
    - Site URL
    - Redirect URLs
+4. Go to `SQL Editor` and run `supabase/migrations/20260222_create_planner_states.sql`.
 
 ### Important Data Note
 
-This app currently stores planning data in browser localStorage, namespaced by signed-in user id.
-That means each browser/device still has separate plan data unless you add database sync.
+Planner state sync now targets Supabase table `public.planner_states` by signed-in user id.
+LocalStorage remains as a fallback/cache.
 
 ## Suggested Production Path (Step-by-Step)
 
 1. Deploy on Railway with HTTPS.
 2. Configure mandatory Basic Auth env vars.
 3. Configure Supabase Auth env vars.
-4. Verify sign-up/sign-in works on your Railway domain.
-5. Optional next phase: move planner data from localStorage into Supabase tables for cross-device sync.
+4. Run the planner state SQL migration in Supabase.
+5. Verify sign-up/sign-in and cross-device planner sync on your Railway domain.
 
-## Data model
+## Data model and sync
 
 The app stores `AppState` in localStorage under:
 
@@ -110,6 +113,13 @@ The app stores `AppState` in localStorage under:
 - `years: Record<number, YearPlan>`
 
 `YearPlan` includes settings, leave blocks, and key events.
+
+Cloud sync table:
+
+- `public.planner_states`
+  - `user_id uuid primary key`
+  - `state jsonb`
+  - `updated_at timestamptz`
 
 ## Notes
 
