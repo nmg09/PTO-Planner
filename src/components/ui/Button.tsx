@@ -18,7 +18,7 @@ export const Button = ({
   variant?: Variant;
 }) => (
   <button
-    className={`rounded-xl px-3 py-2 text-sm font-medium transition ${variantClass[variant]} ${className}`}
+    className={`rounded-xl px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-60 ${variantClass[variant]} ${className}`}
     {...props}
   >
     {children}

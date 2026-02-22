@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { isValidDateString } from "./date";
+import { isAfter } from "date-fns";
+import { parseDate } from "./date";
+import { validateNoOverlap } from "./schedule";
 
 const dateString = z
   .string()
@@ -12,6 +15,20 @@ export const workScheduleRangeSchema = z.object({
   startDate: dateString,
   endDate: dateString.nullable(),
   workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7)
+}).superRefine((value, ctx) => {
+  if (value.endDate && isAfter(parseDate(value.startDate), parseDate(value.endDate))) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Schedule range start date must be on or before end date"
+    });
+  }
+
+  if (new Set(value.workDays).size !== value.workDays.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Schedule workdays must not contain duplicates"
+    });
+  }
 });
 
 export const leaveSchema = z
@@ -28,6 +45,13 @@ export const leaveSchema = z
     note: z.string().optional()
   })
   .superRefine((value, ctx) => {
+    if (isAfter(parseDate(value.startDate), parseDate(value.endDate))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Leave start date must be on or before end date"
+      });
+    }
+
     if (value.type === "sick" && value.status === "rejected") {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -44,6 +68,13 @@ export const eventSchema = z.object({
   endDate: dateString,
   location: z.string().optional(),
   note: z.string().optional()
+}).superRefine((value, ctx) => {
+  if (isAfter(parseDate(value.startDate), parseDate(value.endDate))) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Event start date must be on or before end date"
+    });
+  }
 });
 
 export const yearPlanSchema = z.object({
@@ -56,6 +87,14 @@ export const yearPlanSchema = z.object({
   }),
   leaves: z.array(leaveSchema),
   events: z.array(eventSchema)
+}).superRefine((value, ctx) => {
+  const scheduleValidation = validateNoOverlap(value.settings.scheduleRanges);
+  if (!scheduleValidation.valid) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: scheduleValidation.message ?? "Schedule ranges overlap"
+    });
+  }
 });
 
 export const appStateSchema = z.object({
