@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode
 } from "react";
@@ -17,6 +18,8 @@ import type {
 } from "../types/app";
 import { makeInitialState, makeYearPlan } from "../lib/defaults";
 import { loadState, saveState, getStorageKey } from "../lib/storage";
+import { loadRemoteState, saveRemoteState } from "../lib/remoteState";
+import { isSupabaseConfigured } from "../lib/supabase";
 
 export type AppContextValue = {
   state: AppState;
@@ -65,19 +68,100 @@ const updateYearPlan = (
 
 export const AppStateProvider = ({
   children,
-  storageKey
+  storageKey,
+  userId
 }: {
   children: ReactNode;
   storageKey?: string;
+  userId?: string;
 }) => {
   const resolvedStorageKey = storageKey ?? getStorageKey();
-  const [state, setState] = useState<AppState>(
-    () => loadState(resolvedStorageKey) ?? makeInitialState()
-  );
+  const [state, setState] = useState<AppState>(makeInitialState());
+  const [hydrated, setHydrated] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>("Loading planner...");
+  const saveTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      const localState = loadState(resolvedStorageKey) ?? makeInitialState();
+      if (cancelled) {
+        return;
+      }
+
+      setState(localState);
+
+      if (!userId || !isSupabaseConfigured) {
+        setHydrated(true);
+        setLoadingMessage(null);
+        return;
+      }
+
+      try {
+        const remoteState = await loadRemoteState(userId);
+        if (cancelled) {
+          return;
+        }
+
+        if (remoteState) {
+          setState(remoteState);
+          saveState(remoteState, resolvedStorageKey);
+        } else {
+          await saveRemoteState(userId, localState);
+        }
+
+        setLoadingMessage(null);
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Could not sync with Supabase. Using local data for now.";
+        setLoadingMessage(message);
+      } finally {
+        if (!cancelled) {
+          setHydrated(true);
+        }
+      }
+    };
+
+    bootstrap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedStorageKey, userId]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
     saveState(state, resolvedStorageKey);
-  }, [state, resolvedStorageKey]);
+  }, [hydrated, resolvedStorageKey, state]);
+
+  useEffect(() => {
+    if (!hydrated || !userId || !isSupabaseConfigured) {
+      return;
+    }
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = window.setTimeout(async () => {
+      try {
+        await saveRemoteState(userId, state);
+      } catch (_error) {
+        // Keep local state authoritative during temporary network/database issues.
+      }
+    }, 500);
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [hydrated, state, userId]);
 
   const activePlan = useMemo(
     () => getYearPlan(state, state.activeYear),
@@ -247,6 +331,17 @@ export const AppStateProvider = ({
       setState(nextState);
     }
   };
+
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="space-y-2 text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-sky-500 border-t-transparent" />
+          <p className="text-sm text-slate-500">{loadingMessage ?? "Loading planner..."}</p>
+        </div>
+      </div>
+    );
+  }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

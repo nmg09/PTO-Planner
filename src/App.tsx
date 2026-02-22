@@ -109,7 +109,7 @@ const AuthedApp = () => {
   }
 
   return (
-    <AppStateProvider key={user.id} storageKey={getStorageKey(user.id)}>
+    <AppStateProvider key={user.id} storageKey={getStorageKey(user.id)} userId={user.id}>
       <AppLayout />
     </AppStateProvider>
   );
