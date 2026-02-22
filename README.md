@@ -95,15 +95,14 @@ This repo includes `.github/workflows/supabase-migrate.yml` to run migrations au
 
 Configure these GitHub repository secrets:
 
-- `SUPABASE_ACCESS_TOKEN`
-- `SUPABASE_PROJECT_REF`
-- `SUPABASE_DB_PASSWORD`
+- `SUPABASE_DB_URL`
 
-How to get values:
+How to get value:
 
-1. `SUPABASE_ACCESS_TOKEN`: Supabase Dashboard -> Account -> Access Tokens.
-2. `SUPABASE_PROJECT_REF`: Supabase project ref (the `xxxxx` in `https://xxxxx.supabase.co`).
-3. `SUPABASE_DB_PASSWORD`: project database password set when project was created.
+1. Supabase Dashboard -> `Settings -> Database`.
+2. Copy the connection string URI (direct Postgres URI).
+3. Put that full URI into `SUPABASE_DB_URL`.
+4. If your DB password has special characters, use URL-encoded form in the URI.
 
 Migration behavior:
 
