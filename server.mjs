@@ -96,6 +96,24 @@ const pathExists = async (filePath) => {
 };
 
 createServer(async (req, res) => {
+  if (!req.url) {
+    send(res, 400, "Bad request");
+    return;
+  }
+
+  const basePath = req.url.split("?")[0];
+  const decodedPath = decodeURIComponent(basePath);
+
+  // Keep health checks unauthenticated so deployment platforms can probe status.
+  if (decodedPath === "/healthz") {
+    res.writeHead(200, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store"
+    });
+    res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
   if (authEnabled) {
     const auth = parseBasicAuth(req.headers.authorization);
     if (!auth || auth.user !== authUser || auth.password !== authPassword) {
@@ -106,13 +124,6 @@ createServer(async (req, res) => {
     }
   }
 
-  if (!req.url) {
-    send(res, 400, "Bad request");
-    return;
-  }
-
-  const basePath = req.url.split("?")[0];
-  const decodedPath = decodeURIComponent(basePath);
   const requestPath = decodedPath === "/" ? "/index.html" : decodedPath;
   const requestedFile = safeResolve(requestPath);
   const wantsAsset = path.extname(requestPath) !== "";

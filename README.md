@@ -55,6 +55,7 @@ npm run build
 3. Railway will use `railway.json`:
    - Build: `npm ci && npm run build`
    - Start: `npm run start`
+   - Healthcheck: `/healthz`
 4. Set Railway environment variables from `.env.example`.
 5. Open the generated Railway domain. HTTPS is enabled automatically by Railway.
 
