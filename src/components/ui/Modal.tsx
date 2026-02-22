@@ -13,19 +13,27 @@ export const Modal = ({ open, onClose, title, children }: ModalProps) => {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-slate-900/40 p-3 sm:items-center sm:justify-center">
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-panel">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-semibold">{title}</h3>
-          <button
-            className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
-            onClick={onClose}
-            aria-label="Close"
-          >
-            <X size={18} />
-          </button>
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/45 backdrop-blur-[2px]"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-center justify-center px-3 py-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6">
+        <div
+          className="max-h-[88vh] w-full max-w-xl overflow-y-auto rounded-3xl border border-white/70 bg-white/95 p-4 shadow-[0_24px_48px_rgba(15,23,42,0.18)]"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-base font-semibold">{title}</h3>
+            <button
+              className="rounded-lg p-1 text-slate-500 hover:bg-slate-100"
+              onClick={onClose}
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          {children}
         </div>
-        {children}
       </div>
     </div>
   );

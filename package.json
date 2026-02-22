@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "start": "node server.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -13,6 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
@@ -39,4 +41,3 @@
     "vitest": "^2.1.8"
   }
 }
-

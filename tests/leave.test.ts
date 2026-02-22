@@ -42,6 +42,19 @@ describe("leave day-units", () => {
     };
     expect(calculateLeaveDayUnits(single, schedule)).toBe(0.5);
   });
+
+  it("excludes holidays when counting only workdays", () => {
+    expect(
+      calculateLeaveDayUnits(leaveBase, schedule, [
+        {
+          id: "h1",
+          name: "Holiday",
+          date: "2026-01-07",
+          source: "custom"
+        }
+      ])
+    ).toBe(4);
+  });
 });
 
 describe("vacation totals", () => {

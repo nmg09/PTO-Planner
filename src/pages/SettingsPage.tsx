@@ -1,8 +1,9 @@
 import { useMemo, useRef, useState } from "react";
+import { LogOut, Settings2 } from "lucide-react";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Inputs";
-import { WEEKDAY_OPTIONS } from "../lib/constants";
+import { COUNTRY_OPTIONS, PUBLIC_HOLIDAYS, WEEKDAY_OPTIONS } from "../lib/constants";
 import { readFileText, downloadJson } from "../lib/files";
 import { normalizeRangeDates, toggleWorkDay, validateNoOverlap } from "../lib/schedule";
 import {
@@ -12,17 +13,22 @@ import {
   importYearPlanFromJson
 } from "../lib/storage";
 import { useAppState } from "../state/AppContext";
+import { useAuth } from "../state/AuthContext";
 import type { WorkScheduleRange } from "../types/app";
 
 const currentYear = new Date().getFullYear();
 
 export const SettingsPage = () => {
+  const { user, signOut } = useAuth();
   const {
     state,
     activePlan,
     setActiveYear,
     updateSettings,
     setScheduleRanges,
+    addHoliday,
+    removeHoliday,
+    addPublicHolidays,
     replaceState,
     replaceYearPlan,
     ensureYear
@@ -30,6 +36,9 @@ export const SettingsPage = () => {
 
   const [importError, setImportError] = useState<string | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState("US");
+  const [customHolidayName, setCustomHolidayName] = useState("");
+  const [customHolidayDate, setCustomHolidayDate] = useState("");
   const yearInputRef = useRef<HTMLInputElement>(null);
 
   const validation = useMemo(
@@ -50,7 +59,20 @@ export const SettingsPage = () => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Settings</h1>
+      <div className="flex items-center justify-center gap-2">
+        <Settings2 className="h-5 w-5 text-sky-600" />
+        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+      </div>
+
+      <Card title="Account">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-slate-600">{user?.email}</p>
+          <Button variant="secondary" onClick={() => signOut()}>
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </Button>
+        </div>
+      </Card>
 
       <Card title="Active year">
         <div className="flex items-center gap-2">
@@ -62,6 +84,7 @@ export const SettingsPage = () => {
             max={2100}
           />
           <Button
+            className="!w-28 justify-center"
             onClick={() => {
               const nextYear = Number(yearInputRef.current?.value ?? activePlan.year);
               ensureYear(nextYear);
@@ -72,6 +95,7 @@ export const SettingsPage = () => {
           </Button>
           <Button
             variant="secondary"
+            className="!w-28 justify-center"
             onClick={() => {
               ensureYear(currentYear);
               setActiveYear(currentYear);
@@ -245,6 +269,101 @@ export const SettingsPage = () => {
           <Button variant="secondary" onClick={addRange}>
             Add schedule range
           </Button>
+        </div>
+      </Card>
+
+      <Card title="Holidays" subtitle="Used when counting workdays">
+        <div className="flex flex-wrap gap-2">
+          <select
+            className="w-[190px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
+            value={selectedCountry}
+            onChange={(event) => setSelectedCountry(event.target.value)}
+          >
+            {COUNTRY_OPTIONS.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.name}
+              </option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const templates = PUBLIC_HOLIDAYS[selectedCountry] ?? [];
+              addPublicHolidays(
+                templates.map((holiday) => ({
+                  id: crypto.randomUUID(),
+                  name: holiday.name,
+                  date: `${activePlan.year}${holiday.date}`,
+                  country: selectedCountry,
+                  source: "public"
+                }))
+              );
+            }}
+          >
+            Load public holidays
+          </Button>
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Input
+            value={customHolidayName}
+            onChange={(event) => setCustomHolidayName(event.target.value)}
+            placeholder="Holiday name"
+          />
+          <Input
+            type="date"
+            value={customHolidayDate}
+            onChange={(event) => setCustomHolidayDate(event.target.value)}
+          />
+          <Button
+            onClick={() => {
+              if (!customHolidayName || !customHolidayDate) {
+                return;
+              }
+              addHoliday({
+                id: crypto.randomUUID(),
+                name: customHolidayName,
+                date: customHolidayDate,
+                source: "custom"
+              });
+              setCustomHolidayName("");
+              setCustomHolidayDate("");
+            }}
+          >
+            Add holiday
+          </Button>
+        </div>
+
+        <div className="mt-3 space-y-2">
+          {activePlan.holidays.length === 0 && (
+            <p className="text-sm text-slate-500">No holidays loaded.</p>
+          )}
+          {activePlan.holidays
+            .slice()
+            .sort((a, b) => a.date.localeCompare(b.date))
+            .map((holiday) => (
+              <div
+                key={holiday.id}
+                className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-sm"
+              >
+                <span>
+                  {holiday.name}{" "}
+                  <span className="text-slate-500">- {holiday.date}</span>{" "}
+                  {holiday.country && (
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      {holiday.country}
+                    </span>
+                  )}
+                </span>
+                <Button
+                  variant="ghost"
+                  className="!px-2 !py-1 text-xs text-rose-600"
+                  onClick={() => removeHoliday(holiday.id)}
+                >
+                  Delete
+                </Button>
+              </div>
+            ))}
         </div>
       </Card>
 

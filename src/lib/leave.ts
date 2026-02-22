@@ -1,5 +1,5 @@
 import { isAfter } from "date-fns";
-import type { LeaveBlock, LeaveStatus, WorkScheduleRange } from "../types/app";
+import type { Holiday, LeaveBlock, LeaveStatus, WorkScheduleRange } from "../types/app";
 import { listDates, isWorkdayForDate } from "./schedule";
 import { parseDate } from "./date";
 
@@ -11,25 +11,27 @@ const VACATION_COUNTABLE_STATUSES: LeaveStatus[] = [
 
 export const getIncludedDates = (
   leave: LeaveBlock,
-  ranges: WorkScheduleRange[]
+  ranges: WorkScheduleRange[],
+  holidays: Holiday[] = []
 ): string[] => {
   const rawDates = listDates(leave.startDate, leave.endDate);
   if (!leave.countOnlyWorkdays) {
     return rawDates;
   }
 
-  return rawDates.filter((value) => isWorkdayForDate(value, ranges));
+  return rawDates.filter((value) => isWorkdayForDate(value, ranges, holidays));
 };
 
 export const calculateLeaveDayUnits = (
   leave: LeaveBlock,
-  ranges: WorkScheduleRange[]
+  ranges: WorkScheduleRange[],
+  holidays: Holiday[] = []
 ): number => {
   if (isAfter(parseDate(leave.startDate), parseDate(leave.endDate))) {
     return 0;
   }
 
-  const includedDates = getIncludedDates(leave, ranges);
+  const includedDates = getIncludedDates(leave, ranges, holidays);
   if (includedDates.length === 0) {
     return 0;
   }
@@ -51,24 +53,26 @@ export const calculateLeaveDayUnits = (
 
 export const getVacationUsage = (
   leaves: LeaveBlock[],
-  ranges: WorkScheduleRange[]
+  ranges: WorkScheduleRange[],
+  holidays: Holiday[] = []
 ): { plannedUsed: number; approvedUsed: number } => {
   const vacationLeaves = leaves.filter((leave) => leave.type === "vacation");
 
   const plannedUsed = vacationLeaves
     .filter((leave) => VACATION_COUNTABLE_STATUSES.includes(leave.status))
-    .reduce((sum, leave) => sum + calculateLeaveDayUnits(leave, ranges), 0);
+    .reduce((sum, leave) => sum + calculateLeaveDayUnits(leave, ranges, holidays), 0);
 
   const approvedUsed = vacationLeaves
     .filter((leave) => leave.status === "approved")
-    .reduce((sum, leave) => sum + calculateLeaveDayUnits(leave, ranges), 0);
+    .reduce((sum, leave) => sum + calculateLeaveDayUnits(leave, ranges, holidays), 0);
 
   return { plannedUsed, approvedUsed };
 };
 
 export const getSickTotals = (
   leaves: LeaveBlock[],
-  ranges: WorkScheduleRange[]
+  ranges: WorkScheduleRange[],
+  holidays: Holiday[] = []
 ): { yearly: number; byMonth: Record<string, number> } => {
   const sickLeaves = leaves.filter((leave) => leave.type === "sick");
   const byMonth: Record<string, number> = {};
@@ -76,7 +80,7 @@ export const getSickTotals = (
   let yearly = 0;
 
   sickLeaves.forEach((leave) => {
-    const units = calculateLeaveDayUnits(leave, ranges);
+    const units = calculateLeaveDayUnits(leave, ranges, holidays);
     yearly += units;
     const monthKey = leave.startDate.slice(0, 7);
     byMonth[monthKey] = (byMonth[monthKey] ?? 0) + units;

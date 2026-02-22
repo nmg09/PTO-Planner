@@ -77,6 +77,14 @@ export const eventSchema = z.object({
   }
 });
 
+export const holidaySchema = z.object({
+  id: idSchema,
+  name: z.string().min(1),
+  date: dateString,
+  country: z.string().optional(),
+  source: z.enum(["public", "custom"])
+});
+
 export const yearPlanSchema = z.object({
   year: z.number().int().min(2000).max(2100),
   settings: z.object({
@@ -86,7 +94,8 @@ export const yearPlanSchema = z.object({
     scheduleRanges: z.array(workScheduleRangeSchema).min(1)
   }),
   leaves: z.array(leaveSchema),
-  events: z.array(eventSchema)
+  events: z.array(eventSchema),
+  holidays: z.array(holidaySchema).default([])
 }).superRefine((value, ctx) => {
   const scheduleValidation = validateNoOverlap(value.settings.scheduleRanges);
   if (!scheduleValidation.valid) {

@@ -18,7 +18,8 @@ export const makeYearPlan = (year: number): YearPlan => ({
     ]
   },
   leaves: [],
-  events: []
+  events: [],
+  holidays: []
 });
 
 export const makeInitialState = (year = new Date().getFullYear()): AppState => ({
