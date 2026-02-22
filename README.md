@@ -88,7 +88,27 @@ Supabase dashboard setup:
 3. Add your Railway URL to:
    - Site URL
    - Redirect URLs
-4. Go to `SQL Editor` and run `supabase/migrations/20260222_create_planner_states.sql`.
+
+### Step 3 (Automated): Database Migrations via GitHub Actions
+
+This repo includes `.github/workflows/supabase-migrate.yml` to run migrations automatically.
+
+Configure these GitHub repository secrets:
+
+- `SUPABASE_ACCESS_TOKEN`
+- `SUPABASE_PROJECT_REF`
+- `SUPABASE_DB_PASSWORD`
+
+How to get values:
+
+1. `SUPABASE_ACCESS_TOKEN`: Supabase Dashboard -> Account -> Access Tokens.
+2. `SUPABASE_PROJECT_REF`: Supabase project ref (the `xxxxx` in `https://xxxxx.supabase.co`).
+3. `SUPABASE_DB_PASSWORD`: project database password set when project was created.
+
+Migration behavior:
+
+1. Runs automatically on push to `main` when files under `supabase/migrations/**` change.
+2. Can also be run manually from GitHub Actions (`workflow_dispatch`).
 
 ### Important Data Note
 
@@ -100,7 +120,7 @@ LocalStorage remains as a fallback/cache.
 1. Deploy on Railway with HTTPS.
 2. Configure mandatory Basic Auth env vars.
 3. Configure Supabase Auth env vars.
-4. Run the planner state SQL migration in Supabase.
+4. Configure GitHub secrets for automated Supabase migrations.
 5. Verify sign-up/sign-in and cross-device planner sync on your Railway domain.
 
 ## Data model and sync
