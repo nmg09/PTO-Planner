@@ -87,3 +87,31 @@ export const listDates = (startDate: string, endDate: string): string[] =>
     start: parseDate(startDate),
     end: parseDate(endDate)
   }).map((value) => formatDate(value));
+
+export const toggleWorkDay = (workDays: number[], day: number): number[] => {
+  const exists = workDays.includes(day);
+  if (exists && workDays.length === 1) {
+    return workDays;
+  }
+
+  if (exists) {
+    return workDays.filter((item) => item !== day);
+  }
+
+  return [...workDays, day].sort((a, b) => a - b);
+};
+
+export const normalizeRangeDates = (
+  startDate: string,
+  endDate: string | null
+): { startDate: string; endDate: string | null } => {
+  if (!endDate) {
+    return { startDate, endDate };
+  }
+
+  if (isAfter(parseDate(startDate), parseDate(endDate))) {
+    return { startDate, endDate: startDate };
+  }
+
+  return { startDate, endDate };
+};

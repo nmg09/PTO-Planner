@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { getScheduleForDate, isWorkdayForDate } from "../src/lib/schedule";
+import {
+  getScheduleForDate,
+  isWorkdayForDate,
+  normalizeRangeDates,
+  toggleWorkDay
+} from "../src/lib/schedule";
 import type { WorkScheduleRange } from "../src/types/app";
 
 const ranges: WorkScheduleRange[] = [
@@ -26,5 +31,22 @@ describe("schedule lookup", () => {
   it("derives workday by active range", () => {
     expect(isWorkdayForDate("2026-03-07", ranges)).toBe(false);
     expect(isWorkdayForDate("2026-08-02", ranges)).toBe(true);
+  });
+});
+
+describe("schedule range helpers", () => {
+  it("does not remove the final selected workday", () => {
+    expect(toggleWorkDay([1], 1)).toEqual([1]);
+  });
+
+  it("adds and sorts workdays", () => {
+    expect(toggleWorkDay([3, 1], 2)).toEqual([1, 2, 3]);
+  });
+
+  it("normalizes invalid range dates by snapping end to start", () => {
+    expect(normalizeRangeDates("2026-03-10", "2026-03-01")).toEqual({
+      startDate: "2026-03-10",
+      endDate: "2026-03-10"
+    });
   });
 });

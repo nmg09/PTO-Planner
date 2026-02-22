@@ -4,7 +4,7 @@ import { Card } from "../components/ui/Card";
 import { Input } from "../components/ui/Inputs";
 import { WEEKDAY_OPTIONS } from "../lib/constants";
 import { readFileText, downloadJson } from "../lib/files";
-import { validateNoOverlap } from "../lib/schedule";
+import { normalizeRangeDates, toggleWorkDay, validateNoOverlap } from "../lib/schedule";
 import {
   exportAllYears,
   exportYearPlan,
@@ -29,6 +29,7 @@ export const SettingsPage = () => {
   } = useAppState();
 
   const [importError, setImportError] = useState<string | null>(null);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const yearInputRef = useRef<HTMLInputElement>(null);
 
   const validation = useMemo(
@@ -123,6 +124,11 @@ export const SettingsPage = () => {
             {validation.message}
           </p>
         )}
+        {scheduleError && (
+          <p className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-700">
+            {scheduleError}
+          </p>
+        )}
 
         <div className="space-y-3">
           {activePlan.settings.scheduleRanges.map((range) => (
@@ -133,15 +139,25 @@ export const SettingsPage = () => {
                   <Input
                     type="date"
                     value={range.startDate}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      setScheduleError(null);
+                      const normalized = normalizeRangeDates(
+                        event.target.value,
+                        range.endDate
+                      );
+
                       setScheduleRanges(
                         activePlan.settings.scheduleRanges.map((item) =>
                           item.id === range.id
-                            ? { ...item, startDate: event.target.value }
+                            ? {
+                                ...item,
+                                startDate: normalized.startDate,
+                                endDate: normalized.endDate
+                              }
                             : item
                         )
-                      )
-                    }
+                      );
+                    }}
                   />
                 </label>
                 <label className="space-y-1 text-xs">
@@ -149,15 +165,23 @@ export const SettingsPage = () => {
                   <Input
                     type="date"
                     value={range.endDate ?? ""}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      setScheduleError(null);
+                      const nextEndDate = event.target.value || null;
+                      const normalized = normalizeRangeDates(range.startDate, nextEndDate);
+
                       setScheduleRanges(
                         activePlan.settings.scheduleRanges.map((item) =>
                           item.id === range.id
-                            ? { ...item, endDate: event.target.value || null }
+                            ? {
+                                ...item,
+                                startDate: normalized.startDate,
+                                endDate: normalized.endDate
+                              }
                             : item
                         )
-                      )
-                    }
+                      );
+                    }}
                   />
                 </label>
               </div>
@@ -173,9 +197,12 @@ export const SettingsPage = () => {
                         selected ? "bg-ink text-white" : "bg-slate-100 text-slate-600"
                       }`}
                       onClick={() => {
-                        const nextDays = selected
-                          ? range.workDays.filter((item) => item !== day.value)
-                          : [...range.workDays, day.value].sort();
+                        setScheduleError(null);
+                        const nextDays = toggleWorkDay(range.workDays, day.value);
+                        if (nextDays === range.workDays) {
+                          setScheduleError("At least one workday must remain selected.");
+                          return;
+                        }
 
                         setScheduleRanges(
                           activePlan.settings.scheduleRanges.map((item) =>
@@ -194,11 +221,18 @@ export const SettingsPage = () => {
                 <Button
                   variant="danger"
                   className="!text-xs"
-                  onClick={() =>
+                  disabled={activePlan.settings.scheduleRanges.length === 1}
+                  onClick={() => {
+                    setScheduleError(null);
+                    if (activePlan.settings.scheduleRanges.length === 1) {
+                      setScheduleError("At least one schedule range is required.");
+                      return;
+                    }
+
                     setScheduleRanges(
                       activePlan.settings.scheduleRanges.filter((item) => item.id !== range.id)
-                    )
-                  }
+                    );
+                  }}
                 >
                   Delete range
                 </Button>
